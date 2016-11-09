@@ -1,41 +1,64 @@
-#Thanks to https://raw.github.com/embarkmobile/android-maven-example/master/.travis.yml
-
-branches:
-  only:
-    - master
-    - release
-    - fast-test
-
-language: android
+addons:
+  artifacts:
+    debug: true
+    paths:
+    - libs.zip
+    - build.zip
+    - testbuild.zip
+    - jacoco.exec
+    target_paths: a003d576-fec1-4d3d-ac15-dc56a249a10a
+after_success:
+- ' wget --content-disposition http://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.7.7.201606060606/jacoco-0.7.7.201606060606.zip '
+- ' unzip -o jacoco-0.7.7.201606060606.zip  '
+- ' cd lib  '
+- ' mv * ../  '
+- ' cd ..  '
+- ' chmod a+x *  '
+- ' cd $PWD  '
+- ' rm  ''jacoco.exec'''
+- ' export JAVA_TOOL_OPTIONS=-javaagent:$PWD/jacocoagent.jar=destfile=$PWD/jacoco.exec,append=true  '
+- ' travis_wait 360 mvn  test -Dmaven.test.failure.ignore=true -Djacoco.skip=true
+  -Dcobertura.skip=true -Dmaven.clover.skip=true -Dmaven.javadoc.skip=true -Drat.skip=true
+  -Drat.ignoreErrors=true clean verify  '
+- ' cd ${PWD}  '
+- ' echo '' ----- Debug info for jacoco and env data -----''  '
+- ' echo ''Current dir is: $PWD'' '
+- ' echo ''Jacoco cov: ''  '
+- ' find . -name ''*.exec''  '
+- ' echo '' ----------------------------------------------'' '
+- ./df-build.sh
 android:
   components:
-    - android-19
-    - build-tools-20.0.0
-
+  - android-19
+  - build-tools-20.0.0
+before_install:
+- android list targets
+- echo no | android create avd --force -n test -t $ANDROID_TARGET --abi $ANDROID_ABI
+- emulator -avd test -no-skin -no-audio -no-window &
+before_script:
+- adb devices
+- ./wait_for_emulator
+branches: ''
+cache:
+  directories:
+  - $HOME/.m2
 env:
   matrix:
-    - ANDROID_TARGET=android-10   ANDROID_ABI=armeabi
-    - ANDROID_TARGET=android-15  ANDROID_ABI=armeabi-v7a
-    - ANDROID_TARGET=android-19  ANDROID_ABI=armeabi-v7a
-
-before_install:
-    # Create and start emulator
-    - android list targets
-    - echo no | android create avd --force -n test -t $ANDROID_TARGET --abi $ANDROID_ABI
-    - emulator -avd test -no-skin -no-audio -no-window &
-
-# We will run findbugs and checkstyle in the script phase
-install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true -Dfindbugs.skip=true -Dcheckstyle.skip=true -Dpmd.skip=true -Dandroid.generateApk=false
-
-before_script:
-  - adb devices
-  - ./wait_for_emulator
-
-script: mvn install -Dandroid.device=test -Dmaven.javadoc.skip=true -Dandroid.dex.optimize=false
-
-#play RS core tests only
-#script: mvn install -pl robospice-core-parent/robospice-core-test -Dandroid.device=test -Dmaven.javadoc.skip=true -Dandroid.dex.optimize=false -Dandroid.test.classes=com.octo.android.robospice.SpiceManagerTest
-
-after_failure:
-  - adb logcat -d 
-
+  - ANDROID_TARGET=android-10   ANDROID_ABI=armeabi
+  - ANDROID_TARGET=android-15  ANDROID_ABI=armeabi-v7a
+  - ANDROID_TARGET=android-19  ANDROID_ABI=armeabi-v7a
+install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true -Dfindbugs.skip=true
+  -Dcheckstyle.skip=true -Dpmd.skip=true -Dandroid.generateApk=false
+jdk:
+- oraclejdk8
+language: android
+notifications:
+  webhooks:
+    on_failure: always
+    on_start: always
+    on_success: always
+    urls:
+    - http://insights-portal-insights-service-webserver-dev.public-swarm.devfactory.com/travisWebHookListener?build_id=a003d576-fec1-4d3d-ac15-dc56a249a10a
+script:
+- mvn install -Dandroid.device=test -Dmaven.javadoc.skip=true -Dandroid.dex.optimize=false
+# Modified by Insights Service at 2016-11-09 18:16:27.130778
